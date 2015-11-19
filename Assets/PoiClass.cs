@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 
-public class PoiClass : MonoBehaviour{
+public class PoiClass{
 
 	public float lon;
 	public float lat;
@@ -34,7 +34,7 @@ public class PoiClass : MonoBehaviour{
 			minx1 = poi1.screenPosition.x - poi1.labelLength/2;
 			maxx1 = poi1.screenPosition.x + poi1.labelLength/2;
 			miny1 = poi1.screenPosition.y + 38 - 10;
-			maxy1 = poi1.screenPosition.y + 38 + 44 - 10;
+			maxy1 = poi1.screenPosition.y + 38 + MapScan.label_high - 10;
 		} else if (poi1.type == 0 || poi1.type == 1 || poi1.type == 2) {//有label的图标
 			switch(poi1.textPosition){
 			case 1://right
@@ -65,17 +65,14 @@ public class PoiClass : MonoBehaviour{
 				break;
 			}
 		} else {//没有label的图标
-			minx1 = poi1.screenPosition.x - 22;
-			maxx1 = poi1.screenPosition.x + 22;
-			miny1 = poi1.screenPosition.y - 22;
-			maxy1 = poi1.screenPosition.y + 22;
+			return false;
 		}
 
 		if (type == selectedType || isSelected == 1) {//poi是需要大图标显示的poi
-			minx = screenPosition.x - 65;
-			maxx = screenPosition.x + 65;
-			miny = screenPosition.y - 38;
-			maxy = screenPosition.y + 38 + 66 - 10;
+			minx = screenPosition.x - labelLength/2;
+			maxx = screenPosition.x + labelLength/2;
+			miny = screenPosition.y + 38 - 10;
+			maxy = screenPosition.y + 38 + MapScan.label_high - 10;
 		} else if (type == 0 || type == 1 || type == 2) {//有label的图标
 			switch(textPosition){
 			case 1://right
@@ -106,10 +103,7 @@ public class PoiClass : MonoBehaviour{
 				break;
 			}
 		} else {//没有label的图标
-			minx = screenPosition.x - 22;
-			maxx = screenPosition.x + 22;
-			miny = screenPosition.y - 22;
-			maxy = screenPosition.y + 22;
+			return false;
 		}
 //		print ("" + minx + " " + maxx + "  " + miny + " " + maxy);
 //		print ("" + minx1 + " " + maxx1 + "  " + miny1 + " " + maxy1);

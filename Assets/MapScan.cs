@@ -494,11 +494,14 @@ public class MapScan : MonoBehaviour {
 			Vector3 screenpos = Camera.main.WorldToScreenPoint(new Vector3 (-(float)point.pointX/100f,0f,(float)point.pointY/100f));
 			if(!isPositonInScreen(screenpos))continue;//不在屏幕内的不显示
 			float poiDistanceFromCamera = Vector3.Distance(new Vector3 (-(float)point.pointX/100f,0f,(float)point.pointY/100f),transform.position);
+
 			if(kav.gdLevel2UnityCameraHeight(level) > poiDistanceFromCamera){
 				poi.screenPosition = new Vector2(screenpos.x,Screen.height - screenpos.y);
+				if(!calculateWhichPositionShouldPlace(poi)){
+					continue;
+				}
+				listPoisAlreadyInScreen.Add(poi);
 				if(type == selectedType || isSelected == 1){//big
-					calculateWhichPositionShouldPlace(poi);
-					listPoisAlreadyInScreen.Add(poi);
 					if (GUI.Button (new Rect (screenpos.x - 31.5f, Screen.height - screenpos.y - 76f, 63f, 76f), (GUIContent)texture_big[type])) {
 						if(!isDraging){
 							_unityCallIOS("clickpoi|"+name);
@@ -510,7 +513,7 @@ public class MapScan : MonoBehaviour {
 						}
 					}
 					centeredStyle.alignment = TextAnchor.UpperCenter;
-					centeredStyle.normal.textColor = Color.white;
+					centeredStyle.normal.textColor = new Color(1,1,1,0.5f);
 					GUI.Label (new Rect (screenpos.x-poi.labelLength/2, Screen.height - screenpos.y-2-10, poi.labelLength, label_high), name,centeredStyle);
 					GUI.Label (new Rect (screenpos.x-poi.labelLength/2-2, Screen.height - screenpos.y-10, poi.labelLength, label_high), name,centeredStyle);
 					GUI.Label (new Rect (screenpos.x-poi.labelLength/2+2, Screen.height - screenpos.y-10, poi.labelLength, label_high), name,centeredStyle);
@@ -524,10 +527,6 @@ public class MapScan : MonoBehaviour {
 							_unityCallIOS("clickpoi|"+name);
 						}
 					}
-					poi.textPosition = 1;
-					calculateWhichPositionShouldPlace(poi);
-					if(poi.textPosition == 0)continue;
-					listPoisAlreadyInScreen.Add(poi);
 					if(type == 0 || type == 1 || type ==2){
 						float label_position_x = 0.0f;
 						float label_position_y = 0.0f;
@@ -565,10 +564,7 @@ public class MapScan : MonoBehaviour {
 								_unityCallIOS("clickpoi|"+name);
 							}
 						}
-
-
-						listPoisAlreadyInScreen.Add(poi);
-						centeredStyle.normal.textColor = Color.white;
+						centeredStyle.normal.textColor = new Color(1,1,1,0.5f);
 						GUI.Label (new Rect (label_position_x, label_position_y-2, poi.labelLength, label_high), name,centeredStyle);
 						GUI.Label (new Rect (label_position_x-2, label_position_y, poi.labelLength, label_high), name,centeredStyle);
 						GUI.Label (new Rect (label_position_x+2, label_position_y, poi.labelLength, label_high), name,centeredStyle);
@@ -601,40 +597,45 @@ public class MapScan : MonoBehaviour {
 			return false;
 		return true;
 	}
-	//poi1和poi2都分三种情况考虑：
-	//1.大图标显示着
-	//2.小图标显示着，带文字（又分4钟情况）
-	//3.小图标显示着，不带文字
-
-	void calculateWhichPositionShouldPlace(PoiClass poi){
+	//如果返回true则说明可以放到屏幕上，返回false则不能放屏幕上
+	bool calculateWhichPositionShouldPlace(PoiClass poi){
 		if (listPoisAlreadyInScreen.Count == 0)
-			return;
-		if (poi.type == selectedType || poi.isSelected == 1) {//poi是需要大图标显示的poi
-			//直接加上先不处理
+			return true;
+		if (poi.isSelected == 1) {//点击选择的，没得说，直接加上
+			return true;
+		}
+		int i, j;
+		if (poi.type == selectedType) {//把所有该类型的poi都显示为大图标,有冲突的不予显示
+			for (i = 0; i<listPoisAlreadyInScreen.Count; i++) {
+				PoiClass poiAlreadyInScreen = (PoiClass)listPoisAlreadyInScreen [i];
+				if (poi.hasConflict (poiAlreadyInScreen,selectedType)) {
+//					print("has conflict2");
+					break;
+				}
+			}
+			if(i < listPoisAlreadyInScreen.Count){
+				return false;
+			}else{
+				return true;
+			}
 		} else {//小图标表示的poi
 			if (poi.type == 0 || poi.type == 1 || poi.type == 2) {//有label的图标
-				int i, j;
-				int k;
 				for (i = 1; i<=4; i++) {//4 position
 					poi.textPosition = i;
 					for (j = 0; j<listPoisAlreadyInScreen.Count; j++) {
 						PoiClass poiAlreadyInScreen = (PoiClass)listPoisAlreadyInScreen [j];
 						if (poi.hasConflict (poiAlreadyInScreen,selectedType)) {
 //							print("has conflict");
-							k = j;
 							break;
 						}
 					}
 					if (j == listPoisAlreadyInScreen.Count) {
-						poi.textPosition = i;
-						return;
+						return true;
 					}
 				}
-				if (i > 4) {//放到4个方向哪个都有冲突，维持当前的方向
-					poi.textPosition = 0;
-				}
+				return false;//放到4个方向哪个都有冲突，不放到屏幕上
 			} else {//没有label的图标
-				//直接加上先不处理
+				return true;
 			}
 		}
 	}
@@ -675,7 +676,7 @@ public class MapScan : MonoBehaviour {
 	}
 	//poi数据传递给unity:
 	void zywx_setPoiDateSource(string message){
-//					message = "116.275871,39.999634,重翠亭,0,0,17;116.276756,39.999634,万寿山,0,1,16";
+//		 		message = "116.274361,40.000229,后大庙,0,0,17;116.274315,39.999905,四大部洲建筑群,0,0,15";
 		message =	 "116.273949,39.999092,景区简介,0,0,14;116.273933,39.999416,众香界,0,0,18;116.273941,39.999630,智慧海,0,0,19;116.274269,39.999172,敷华亭 撷秀亭,0,0,17;116.274574,39.999229,转轮藏,0,0,18;116.274551,39.999264,万寿山昆明湖碑,0,0,19;116.273186,39.999096,五方阁,0,0,17;116.273193,39.998981,宝云阁,0,0,15;116.272812,39.998623,邵窝殿,0,0,19;116.272514,39.998421,云松巢,0,0,17;116.272301,39.998520,贵寿无极,0,0,18;116.270966,39.998085,听鹂馆,0,0,19;116.270927,39.998661,画中游,0,0,17;116.271080,39.999161,湖山真意,0,0,18;116.270798,39.998123,西四所,0,0,19;116.269814,39.998112,寄澜堂,0,0,17;116.270248,39.997761,清晏舫,0,0,18;116.269653,39.998234,荇桥,0,0,19;116.269646,39.998028,小西泠,0,0,17;116.268913,39.998177,五圣祠,0,0,16;116.268829,39.998482,迎旭楼,0,0,19;116.268700,39.999104,澄怀阁,0,0,17;116.269341,39.998653,临河殿,0,0,18;116.269730,39.998718,穿堂殿,0,0,19;116.269737,39.998650,小有天,0,0,17;116.269821,39.998573,斜门殿,0,0,18;116.269585,39.998917,延清赏楼,0,0,19;116.268990,39.999989,北船坞,0,0,17;116.269470,39.999779,宿云檐,0,0,18;116.267883,40.000965,半壁桥,0,0,19;116.277924,39.998493,邀月门,0,0,17;116.276894,39.998398,留佳亭,0,0,18;116.275658,39.998260,寄澜亭,0,0,16;116.272400,39.997910,秋水亭,0,0,17;116.270988,39.997780,清遥亭,0,0,18;116.270226,39.997829,石丈亭,0,0,19;116.271782,39.997742,对鸥舫 鱼藻轩,0,0,17;116.271606,39.998074,山色湖光共一楼,0,0,18;116.274101,39.982765,西堤,0,0,19;116.267899,40.000267,界湖桥,0,0,17;116.267517,39.996513,豳风桥,0,0,18;116.269447,39.991138,镜桥,0,0,14;116.271614,39.989082,练桥,0,0,15;116.273598,39.983963,柳桥,0,0,18;116.273796,39.986256,景明楼,0,0,19;116.265717,39.986759,畅观堂,0,0,17;116.280273,39.990837,新建宫门,0,0,18;116.275879,39.991474,南湖岛建筑群,0,0,14;116.276268,39.991192,广润灵雨祠,0,0,17;116.275986,39.991711,涵虚堂,0,0,18;116.279648,39.982094,凤凰墩,0,0,19;116.279884,39.981625,绣漪桥,0,0,17;116.279343,39.996712,知春亭,0,0,18;116.280045,39.996590,文昌阁,0,0,19;116.280220,39.996819,耶律楚材祠,0,0,17;116.283684,39.998135,涵虚牌楼,0,0,18;116.281059,39.997910,东宫门,0,0,19;116.280006,39.997765,仁寿殿,0,0,17;116.279320,39.997871,玉澜堂,0,0,18;116.279167,39.998451,宜芸馆,0,0,19;116.278412,39.998619,乐寿堂,0,0,17;116.278793,39.998783,永寿斋,0,0,18;116.277908,39.999035,扬仁风,0,0,19;116.279762,39.998470,德和园,0,0,17;116.279732,39.998775,颐乐殿,0,0,16;116.279663,39.999004,庆善堂,0,0,19;116.279526,39.998440,膳房,0,0,17;116.278488,39.998299,电灯公所,0,0,18;116.281601,39.999931,引镜,0,0,19;116.281868,40.000271,洗秋 饮绿,0,0,17;116.282509,40.000603,澹碧 知春堂,0,0,18;116.282135,40.000702,蘭亭,0,0,19;116.282013,40.000912,湛清轩,0,0,17;116.281807,40.000668,涵远堂,0,0,18;116.281578,40.000721,瞩新楼,0,0,19;116.281311,40.000332,澄爽斋,0,0,17;116.281937,40.000408,知鱼桥,0,0,16;116.268654,40.001789,西宫门 如意门,0,0,19;116.280983,40.001595,眺远斋,0,0,17;116.281677,40.001125,霁清轩,0,0,18;116.275375,40.001316,寅辉城关,0,0,19;116.279991,40.000320,益寿堂,0,0,17;116.280502,40.000088,乐农轩 永寿斋,0,0,18;116.280716,39.999466,紫气东来城关,0,0,19;116.274361,40.000229,后大庙,0,0,17;116.274162,40.001125,慈福牌楼,0,0,18;116.274315,39.999905,四大部洲建筑群,0,0,15;116.274063,40.002598,北宫门,0,0,17;116.273239,39.999794,云会寺,0,0,18;116.275566,39.999138,写秋轩,0,0,19;116.275871,39.999634,重翠亭,0,0,17;116.276276,39.999783,千峰彩翠,0,0,18;116.276649,39.999031,意迟云在,0,0,19;116.276367,39.998756,无尽意轩,0,0,17;116.277420,39.998875,养云轩,0,0,18;116.277153,39.999516,福荫轩,0,0,19;116.278175,39.999367,含新亭,0,0,17;116.279518,39.999931,景福阁,0,0,18;116.274231,39.997501,云辉玉宇牌楼,0,0,15;116.274559,39.998035,玉华殿 云锦殿,0,0,17;116.273926,39.998753,德辉殿,0,0,15;116.273376,39.998093,介寿堂 清华轩,0,0,19;116.270981,39.998203,戏楼,0,1,17;116.275986,39.998295,长廊,0,1,18;116.266991,39.993355,玉带桥,0,1,19;116.266701,39.997227,耕织图,0,1,17;116.276756,39.999634,万寿山,0,1,16;116.274467,39.994698,昆明湖,0,1,14;116.278610,39.990360,廓如亭,0,1,17;116.278412,39.990292,十七孔桥,0,1,18;116.279739,39.998608,大戏楼,0,1,19;116.281891,40.000050,谐趣园,0,1,17;116.274010,40.001915,苏州街,0,1,18;116.278488,40.000893,澹宁堂,0,1,19;116.273750,39.997917,排云殿,10,1,14;116.273949,39.999092,佛香阁,10,1,14;116.279630,39.990094,百合素食,1,0,13;116.270965,39.998083,听鹂馆饭庄,1,0,14;116.270574,39.998049,北京小吃(青龙桥东街),1,0,15;116.275025,39.998235,颐和园快餐厅,1,0,16;116.270424,39.998196,宫廷小吃,1,0,17;116.281540,39.992997,德善园餐厅,1,0,18;116.280168,39.996348,加加游(颐和园店),1,0,19;116.279869,39.996964,颐和园餐厅,1,0,14;116.276058,39.991808,丽春林词,2,0,13;116.267621,39.994141,颐和园商店,2,0,14;116.273696,39.986538,颐和园商店,2,0,15;116.271499,39.998214,颐和园便利店(青龙桥东街),2,0,16;116.275048,39.998143,颐和园食品部(青龙桥东街),2,0,17;116.279327,39.997471,玉澜门,2,0,18;116.279935,39.997098,颐和园商店,2,0,19;116.275528,39.991456,公共厕所,3,0,13;116.266458,39.994298,公共厕所,3,0,14;116.279704,39.990762,公共厕所,3,0,15;116.272464,39.998539,公共厕所,3,0,16;116.281599,39.990361,公共厕所,3,0,17;116.269945,39.998496,公共厕所,3,0,18;116.277559,40.002323,北宫门,4,0,14;116.279318,39.997309,游船码头,5,0,14;116.280499,39.980737,颐和园南如意门,6,0,14;116.273997,40.002734,颐和园北宫门,6,0,14;116.280284,39.990997,颐和园新建宫门,6,0,14;116.281297,39.992084,停车场(昆明湖路),7,0,14;116.281183,39.993530,停车场(昆明湖东路),7,0,14;116.259813,39.999282,医院T,8,0,14;116.261358,39.994482,娱乐设施T,9,0,14;116.283932,39.993890,住宿T,11,0,14;116.281528,39.998168,颐和园售票处,12,0,14;116.282693,39.997379,ATMT,13,0,14;116.282322,39.991901,邮局T,14,0,14;116.280112,39.991276,公用电话,15,0,14";
 		print ("unity:zywx_setPoiDateSource:" + message);
 		removeAllPoi ();
