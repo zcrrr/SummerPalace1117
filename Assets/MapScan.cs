@@ -268,7 +268,12 @@ public class MapScan : MonoBehaviour {
 								//call ios native function back
 								touch0before = touchZero.position;
 								touch1before = touchOne.position;
-								_unityCallIOS("back");
+								if (platform.Equals ("ios")) {
+									_unityCallIOS("back");
+								}else{
+									unityCallAndroid("unityCallAndroid","back");
+								}
+
 								return;
 							} 
 						}else{//zoom in
@@ -504,12 +509,20 @@ public class MapScan : MonoBehaviour {
 				if(type == selectedType || isSelected == 1){//big
 					if (GUI.Button (new Rect (screenpos.x - 31.5f, Screen.height - screenpos.y - 76f, 63f, 76f), (GUIContent)texture_big[type])) {
 						if(!isDraging){
-							_unityCallIOS("clickpoi|"+name);
+							if (platform.Equals ("ios")) {
+								_unityCallIOS("clickpoi|"+name);
+							}else{
+								unityCallAndroid("unityCallAndroid",""+i);
+							}
 						}
 					}
 					if (GUI.Button (new Rect (screenpos.x-poi.labelLength/2, Screen.height - screenpos.y-10, poi.labelLength, label_high), "")) {
 						if(!isDraging){
-							_unityCallIOS("clickpoi|"+name);
+							if (platform.Equals ("ios")) {
+								_unityCallIOS("clickpoi|"+name);
+							}else{
+								unityCallAndroid("unityCallAndroid",""+i);
+							}
 						}
 					}
 					centeredStyle.alignment = TextAnchor.UpperCenter;
@@ -524,7 +537,11 @@ public class MapScan : MonoBehaviour {
 					if (GUI.Button (new Rect (screenpos.x - 22, Screen.height - screenpos.y - 22, 44, 44), (GUIContent)texture_small[type])) {
 						if(!isDraging){
 							selectOnePoi(poi);
-							_unityCallIOS("clickpoi|"+name);
+							if (platform.Equals ("ios")) {
+								_unityCallIOS("clickpoi|"+name);
+							}else{
+								unityCallAndroid("unityCallAndroid",""+i);
+							}
 						}
 					}
 					if(type == 0 || type == 1 || type ==2){
@@ -561,7 +578,11 @@ public class MapScan : MonoBehaviour {
 						if (GUI.Button (new Rect (label_position_x, label_position_y, poi.labelLength, label_high), "")) {
 							if(!isDraging){
 								selectOnePoi(poi);
-								_unityCallIOS("clickpoi|"+name);
+								if (platform.Equals ("ios")) {
+									_unityCallIOS("clickpoi|"+name);
+								}else{
+									unityCallAndroid("unityCallAndroid",""+i);
+								}
 							}
 						}
 						centeredStyle.normal.textColor = new Color(1,1,1,0.5f);
@@ -765,7 +786,18 @@ public class MapScan : MonoBehaviour {
 		print ("unity:zywx_setCameraPositionByBounds:success" );
 	}
 	//------------------------------------------调用自游无限的接口-----------------------------------------------------
+	//unity调用iOS
 	[DllImport ("__Internal")]
 	private static extern void _unityCallIOS (string message);
+	//unity调用android
+	void unityCallAndroid(string funcname,string message){
+		#if UNITY_EDITOR
+		using (AndroidJavaClass cls_UnityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer")) {
+			using (AndroidJavaObject obj_Activity = cls_UnityPlayer.GetStatic<AndroidJavaObject>("currentActivity")) {
+				obj_Activity.Call (funcname,message);
+			}
+		}
+		#endif
+	}
 }
 
